@@ -120,7 +120,7 @@ func main() {
 
 		// parse the config file
 		// Get appropriate parser
-		configParser, err := parser.GetParser(*fromTerminal)
+		configParser, err := parser.GetParser(*fromTerminal, *sourcePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
