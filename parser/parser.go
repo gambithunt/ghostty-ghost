@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -13,7 +14,9 @@ type ConfigParser interface {
 	ConvertToGhostty(config map[string]string) (map[string]string, error)
 }
 
-type KittyParser struct {}
+type KittyParser struct {
+	configPath string
+}
 type AlacrittyParser struct {}
 
 // kittywriter
@@ -52,15 +55,20 @@ func (p *KittyParser) Write(filepath string, config map[string]string) error {
 
 
 // method to get the appriopriate parser
-func GetParser(terminalType string) (ConfigParser, error) {
+func GetParser(terminalType string, configPath string) (ConfigParser, error) {
 	switch terminalType {
 	case "kitty":
-		return &KittyParser{}, nil
+		return NewKittyParser(configPath), nil
 	case "alacritty":
 		return &AlacrittyParser{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported terminal type: %s", terminalType)
 	}
+}
+
+// a constructer for kittyParser
+func NewKittyParser(configPath string) *KittyParser {
+	return &KittyParser{configPath: configPath}
 }
 
 //  Parse the config file
@@ -119,12 +127,7 @@ func (p *KittyParser) Parse(filepath string) (map[string]string, error) {
     return config, nil
 }
 
-func (p *KittyParser) ConvertToGhostty(config map[string]string) (map[string]string, error) {
-	return ConvertKittyToGhostty(config), nil
-}
-
-// convet the kitty config to ghostty
-func ConvertKittyToGhostty(kittyConfig map[string]string) map[string]string {
+func (p *KittyParser) ConvertToGhostty(kittyConfig map[string]string) (map[string]string, error) {
 	ghosttyConfig := make(map[string]string)
 	var unmappedKeys []string
 
@@ -140,7 +143,6 @@ func ConvertKittyToGhostty(kittyConfig map[string]string) map[string]string {
 
 	// handle theme conversion from kitty to ghostty
 	for key, value := range kittyConfig {
-		fmt.Printf("Debug - Processing key: %s, value: %s\n", key, value)
 		if key == "include" && strings.Contains(value, "themes/") {
 			// split the path to get the theme name
 			parts := strings.Split(value, "/")
@@ -152,6 +154,13 @@ func ConvertKittyToGhostty(kittyConfig map[string]string) map[string]string {
 			}
 		}else if strings.Contains(value, "current-theme.conf") {
 			fmt.Println("Debug - Theme is a current theme file")
+			// parse the theme file
+			themeConfig := p.parseKittyThemeFile(value)
+			
+			// add all the values to the ghostty config
+			for key, value := range themeConfig {
+				ghosttyConfig[key] = value
+			}
 		}
 	}
 
@@ -160,20 +169,90 @@ func ConvertKittyToGhostty(kittyConfig map[string]string) map[string]string {
 	ghosttyConfig["# Unmapped settings"] = ""
 	for _, key := range unmappedKeys {
 		ghosttyConfig["# " + key] = kittyConfig[key]
-	
 	}
 
-
-	return ghosttyConfig
+	return ghosttyConfig, nil
 }
 
-// handle the kitty theme conversion
-func ConvertKittyThemeToGhostty(themeFile string) map[string]string {
+
+// helper function to parse kitty theme file
+func (p *KittyParser) parseKittyThemeFile(themeFile string) map[string]string {
+	configDir := filepath.Dir(p.configPath)
+	fullThemePath := filepath.Join(configDir, themeFile)
+	fmt.Printf("Debug - Full theme path: %s\n", fullThemePath)
 
 	themeConfig := make(map[string]string)
 
-	// read the theme
-	return themeConfig
+	// get the contents of the theme file
+	file, err := os.Open(fullThemePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error opening theme file: %v\n", err)
+		fmt.Print("Theme file not found\n")
+		return nil
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text()) 
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		if key == "" {
+			fmt.Print("Empty key found in theme file, ignored\n")
+			continue
+		}
+
+		themeConfig[key] = value
+	}
+
+	// check for scanner errors
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading theme file: %v\n", err)
+		return nil
+	}
+
+
+return ConvertKittyThemeToGhostty(themeConfig)
+}
+
+// handle the kitty theme conversion
+func ConvertKittyThemeToGhostty(themeFile map[string]string) map[string]string {
+
+	ghosttyThemeConfig := make(map[string]string)
+	var unmappedKeys []string
+
+	for kittyKey, value := range themeFile {
+		if ghosttyKey, exists := kittyToGhosttyThemeCodex[kittyKey]; exists {
+			// format the ghostty key correctly eg palette = 26=#005fd7
+			if strings.Contains(ghosttyKey, " = ") {
+				parts := strings.SplitN(ghosttyKey, " = ", 2)
+				baseKey := parts[0]
+				modifier := parts[1]
+
+				// combine with the value
+				ghosttyThemeConfig[baseKey + " = " + modifier] = value
+			}else {
+				ghosttyThemeConfig[ghosttyKey] = value
+			}
+		}else {
+			// hanndle unmapped keys
+			unmappedKeys = append(unmappedKeys, kittyKey)
+		}
+	}
+
+	// add unmapped keys to the ghostty theme config but comment them out
+	ghosttyThemeConfig["# Unmapped settings"] = ""
+	for _, key := range unmappedKeys {
+		ghosttyThemeConfig["# " + key] = themeFile[key]
+	}
+
+	// return the ghostty theme config
+	return ghosttyThemeConfig
 }
 
 	// alacritty
@@ -197,7 +276,32 @@ func (a *AlacrittyParser) ConvertToGhostty(config map[string]string) (map[string
 
 
 
-
+var kittyToGhosttyThemeCodex = map[string]string{
+	 // Standard colors
+	 "background": "background",
+	 "foreground": "foreground",
+	 "cursor": "cursor-color",
+	 "selection_background": "selection-background",
+	 "selection_foreground": "selection-foreground",
+	 
+	 // Color palette
+	 "color0": "palette = 0=",
+	 "color1": "palette = 1=",
+	 "color2": "palette = 2=",
+	 "color3": "palette = 3=",
+	 "color4": "palette = 4=",
+	 "color5": "palette = 5=",
+	 "color6": "palette = 6=",
+	 "color7": "palette = 7=",
+	 "color8": "palette = 8=",
+	 "color9": "palette = 9=",
+	 "color10": "palette = 10=",
+	 "color11": "palette = 11=",
+	 "color12": "palette = 12=",
+	 "color13": "palette = 13=",
+	 "color14": "palette = 14=",
+	 "color15": "palette = 15=",
+}
 
 // create the mapping functions
 var kittyToGhosttyCodex = map[string]string{
