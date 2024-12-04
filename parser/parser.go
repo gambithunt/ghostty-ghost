@@ -360,6 +360,27 @@ func (a *AlacrittyParser) normaliseAlacrittyValue(value string) string {
             }
 		}
 	}
+
+	// handle window padding
+	if strings.Contains(value, "x") {
+		if parts := strings.Split(value, "x ="); len(parts) > 1 {
+			if len(parts) > 1 {
+				xValue := strings.Split(strings.TrimSpace(parts[1]), ",")[0]
+				return xValue
+			}
+		}
+	}
+
+	// make Always or always or on to true
+	if strings.ToLower(value) == "always" || strings.ToLower(value) == "on" || strings.ToLower(value) == "full" {
+		return "true"
+	}
+
+	// neveer to false
+	if strings.ToLower(value) == "never" {
+		return "false"
+	}
+
 	return value
 }
 
@@ -414,29 +435,31 @@ var kittyToGhosttyCodex = map[string]string{
 	  "font_size": "font-size",
 	  
 	  // Window settings
-	  "window_padding_width": "window-padding",
+	  "window_padding": "window-padding",
 	  "remember_window_size": "window-save-state",
 	  "initial_window_width": "window-width",
 	  "initial_window_height": "window-height",
 	  "window_resize_step_cells": "window-resize-step",
+	  "window_decorations": "window-decoration",
+	  "window_opacity": "background-opacity",
+
+		// scrolling
+		"scrolling_multiplier": "mouse-scroll-multiplier",
+
+		// mouse
+		"mouse_hide_when_typing": "mouse-hide-while-typing",
+
 	  
 	  // Terminal behavior
-	  "sync_to_monitor": "window-vsync",
-	  "enable_audio_bell": "bells",
-	  "copy_on_select": "copy-on-select",
+	  "selection_save_to_clipboard": "copy-on-select",
 	  
-	  // Colors and appearance
-	  "background_opacity": "background-opacity",
-	  "background": "background",
-	  "foreground": "foreground",
-	  "cursor_color": "cursor-color",
-	  "selection_foreground": "selection-foreground",
-	  "selection_background": "selection-background",
 	  
 	  // Cursor
 	  "cursor_shape": "cursor-style",
 	  "cursor_beam_thickness": "cursor-beam-width",
 	  "cursor_blink_interval": "cursor-blink-interval",
+	  "colors_cursor_cursor": "cursor-color",
+		"colors_cursor_text": "cursor-text-color",
 	  
 	  // MacOS specific
 	  "macos_option_as_alt": "macos-option-as-alt",
@@ -446,6 +469,35 @@ var kittyToGhosttyCodex = map[string]string{
 	  // Shell integration
 	  "shell": "command",
 	  "working_directory": "working-directory",
+
+	   // Basic colors
+	   "colors_primary_background": "background",
+	   "colors_primary_foreground": "foreground",
+	   
+	   
+	   // Selection colors
+	   "colors_selection_background": "selection-background",
+	   "colors_selection_text": "selection-foreground",
+	   
+	   // Normal colors (0-7)
+	   "colors_normal_black": "palette = 0",
+	   "colors_normal_red": "palette = 1",
+	   "colors_normal_green": "palette = 2",
+	   "colors_normal_yellow": "palette = 3",
+	   "colors_normal_blue": "palette = 4",
+	   "colors_normal_magenta": "palette = 5",
+	   "colors_normal_cyan": "palette = 6",
+	   "colors_normal_white": "palette = 7",
+	   
+	   // Bright colors (8-15)
+	   "colors_bright_black": "palette = 8",
+	   "colors_bright_red": "palette = 9",
+	   "colors_bright_green": "palette = 10",
+	   "colors_bright_yellow": "palette = 11",
+	   "colors_bright_blue": "palette = 12",
+	   "colors_bright_magenta": "palette = 13",
+	   "colors_bright_cyan": "palette = 14",
+		"colors_bright_white": "palette = 15",
   
 	  // Additional mappings from config
 	  "tab_bar_edge": "gtk-tabs-location",
@@ -476,6 +528,10 @@ var alacrittyToGhostty = map[string]string{
 	  "cursor_color": "cursor-color",
 	  "cursor_opacity": "cursor-opacity",
 	  "cursor_blink": "cursor-style-blink",
+	  "colors_cursor_cursor": "cursor-color",
+	  "cursor_vi_mode_style_shape": "cursor-style",
+	  "cursor_style_blinking": "cursor-style-blink",
+	  "colors_cursor_text": "cursor-text",
 
 	  // Colors
 	  "background": "background",
