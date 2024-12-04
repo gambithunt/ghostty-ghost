@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -18,6 +19,16 @@ type KittyParser struct {
 	configPath string
 }
 type AlacrittyParser struct {}
+
+// sort keys alphabetically
+func sortKeysAlphabetically(config map[string]string) []string {
+	keys := make([]string, 0, len(config))
+	for key := range config {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
 
 // kittywriter
 func (p *KittyParser) Write(filepath string, config map[string]string) error {
@@ -43,9 +54,13 @@ func (p *KittyParser) Write(filepath string, config map[string]string) error {
 	}
 	defer file.Close()
 
+	// sort the keys alphabetically
+	keys := sortKeysAlphabetically(config)
+
+	// write to the file
 	writer := bufio.NewWriter(file)
-	for key, value := range config {
-		_, err := writer.WriteString(fmt.Sprintf("%s %s\n", key, value))
+	for _, key := range keys {
+		_, err := writer.WriteString(fmt.Sprintf("%s %s\n", key, config[key]))
 		if err != nil {
 			return err
 		}
@@ -259,7 +274,93 @@ func ConvertKittyThemeToGhostty(themeFile map[string]string) map[string]string {
 	// Implement the Parse method
 func (a *AlacrittyParser) Parse(filepath string) (map[string]string, error) {
     // Add your implementation here
-    return make(map[string]string), nil
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open config file: %w", err)
+	}
+	defer file.Close()
+
+	config := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	currentSection := ""
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// because toml, handle section headers
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = line[1 : len(line)-1]
+			continue
+		}
+
+		// parse the key value pairs
+		if parts := strings.SplitN(line, "=", 2); len(parts) == 2 {
+			key := strings.TrimSpace(parts[0]) 
+			value := strings.TrimSpace(parts[1])
+
+			// remove matching quotes
+			if (strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"")) ||
+				(strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) {
+				value = value[1 : len(value)-1]
+			}
+
+			// handle nested keys
+			if currentSection != "" {
+				key = a.normaliseAlacrittyKey(currentSection + "." + key) 
+			}
+
+			// normalise the value
+			value = a.normaliseAlacrittyValue(value)
+
+			config[key] = value
+		}
+	}
+
+		// print the config
+		for key, value := range config {
+			fmt.Printf("%s %s\n", key, value)
+		}
+
+    return config, nil
+}
+
+// normalise alaraity keys
+func (a *AlacrittyParser) normaliseAlacrittyKey(key string) string {
+	// replace dots with underscores
+	key = strings.ReplaceAll(key, ".", "_")
+
+	// remove complex keys
+	if strings.Contains(key, "{") {
+		key = strings.Split(key, "{")[0]
+	}
+
+	if strings.Contains(key, "[") {
+		key = strings.Split(key, "[")[0]
+	}
+	return key
+}
+
+// normalise alacritty values
+func (a *AlacrittyParser) normaliseAlacrittyValue(value string) string {
+
+	// handle fonts
+	if strings.Contains(value, "family =") {
+		if parts := strings.Split(value, "family ="); len(parts) > 1 {
+			family := strings.TrimSpace(parts[1])
+			// get the font name
+			if idx := strings.Index(family, "\""); idx >= 0 {
+                if endIdx := strings.Index(family[idx+1:], "\""); endIdx >= 0 {
+                    return family[idx+1 : idx+1+endIdx]
+                }
+            }
+		}
+	}
+	return value
 }
 
 // Implement the Write method
@@ -359,24 +460,29 @@ var kittyToGhosttyCodex = map[string]string{
 	
 }
 
+
+
 var alacrittyToGhostty = map[string]string{
 	  // Font Settings
-	  "font": "font-family",
+	  "font_normal": "font-family",
 	  "font_size": "font-size",
-  
-	  // Colors
-	  "background": "background",
-	  "foreground": "foreground",
-	  "selection_foreground": "selection-foreground",
-	  "selection_background": "selection-background",
-	  "selection_invert": "selection-invert-fg-bg",
-  
+	  "font_italic": "font-family-italic",
+	  "font_bold_italic": "font-family-bold-italic",
+	  "font_bold": "font-family-bold",
+
 	  // Cursor Settings
 	  "cursor": "cursor-style",
 	  "cursor_text": "cursor-text",
 	  "cursor_color": "cursor-color",
 	  "cursor_opacity": "cursor-opacity",
 	  "cursor_blink": "cursor-style-blink",
+
+	  // Colors
+	  "background": "background",
+	  "foreground": "foreground",
+	  "selection_foreground": "selection-foreground",
+	  "selection_background": "selection-background",
+	  "selection_invert": "selection-invert-fg-bg",
   
 	  // Window Layout
 	  "window_padding_x": "window-padding-x",
