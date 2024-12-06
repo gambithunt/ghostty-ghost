@@ -350,8 +350,6 @@ func (a *AlacrittyParser) Parse(SourceFilepath string) (map[string]string, error
     
 			// Clean and normalize path
 			themePath := strings.Trim(line, `"',`)
-			fmt.Printf("DEBUG ---- Theme path: %s\n", themePath)
-			fmt.Printf("DEBUG ---- Config dir: %s\n", configDir)
 			
 			// Get home directory
 			homeDir, err := os.UserHomeDir()
