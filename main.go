@@ -141,10 +141,10 @@ func main() {
 		}
 
 		// Print the converted config key by key
-		fmt.Println("Converted configuration: ----------------")
-		for key, value := range ghosttyConfig {
-			fmt.Printf("%s: %v\n", key, value)
-		}
+		// fmt.Println("Converted configuration: ----------------")
+		// for key, value := range ghosttyConfig {
+		// 	fmt.Printf("%s: %v\n", key, value)
+		// }
 
 		// write the ghossty config to the target path, if no target path is provided use the default path
 		// Write the config
@@ -167,10 +167,53 @@ func main() {
 		fmt.Printf("Parsed config: %+v\n", config)
 
 	}
-
 	
+}
 
+// handle pasring the config file
+func handleParseOfConfig (fromTerminal, sourcePath, targetPath, defaultGhosttyPath string) {
+	// parse the config file
+	// Get appropriate parser
+	configParser, err := parser.GetParser(fromTerminal, sourcePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 
+	// Parse config
+	config, err := configParser.Parse(sourcePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing config: %v\n", err)
+		os.Exit(1)
+	}
 
-	
+	// convert the config file to ghossty
+	ghosttyConfig, err := configParser.ConvertToGhostty(config)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error converting config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print the converted config key by key
+	fmt.Println("Converted configuration: ----------------")
+	for key, value := range ghosttyConfig {
+		fmt.Printf("%s: %v\n", key, value)
+	}
+
+	// write the ghossty config to the target path, if no target path is provided use the default path
+	// Write the config
+	if targetPath == "" {
+		targetPath = defaultGhosttyPath
+	}
+
+	err = configParser.Write(targetPath, ghosttyConfig)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Print the target pathfmt.Printf("Successfully converted configuration to: %s\n", targetPath)
+	fmt.Println("You can now use this configuration with Ghostty terminal")
+	os.Exit(0)
+
 }
