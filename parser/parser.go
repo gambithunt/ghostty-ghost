@@ -10,6 +10,17 @@ import (
 	"strings"
 )
 
+const (
+    colorReset  = "\033[0m"
+    colorRed    = "\033[31m"
+    colorYellow = "\033[33m"
+    colorGreen  = "\033[32m"
+)
+
+func colorWarning(message string) string {
+    return fmt.Sprintf("%sWARNING: %s%s", colorYellow, message, colorReset)
+}
+
 type ConfigParser interface {
 	Parse(filepath string) (map[string]string, error)
 	Write(filepath string, config map[string]string) error
@@ -23,6 +34,7 @@ type AlacrittyParser struct {
 	isParsingTheme bool
 	recursionDepth int
 	maxRecursionDepth int
+	configPath string
 }
 
 // sort keys alphabetically
@@ -71,9 +83,17 @@ func (p *KittyParser) Write(filepath string, config map[string]string) error {
 	// write to the file
 	writer := bufio.NewWriter(file)
 	for _, key := range keys {
-		_, err := writer.WriteString(fmt.Sprintf("%s %s\n", key, config[key]))
-		if err != nil {
-			return err
+		// and = is already added to pallete in the func ConvertToGhostty
+		if strings.Contains(key, "palette") {
+			_, err := writer.WriteString(fmt.Sprintf("%s  %s\n", key, config[key]))
+			if err != nil {
+				return err
+			}
+		}else {
+			_, err := writer.WriteString(fmt.Sprintf("%s = %s\n", key, config[key]))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return writer.Flush()
@@ -82,11 +102,13 @@ func (p *KittyParser) Write(filepath string, config map[string]string) error {
 
 // method to get the appriopriate parser
 func GetParser(terminalType string, configPath string) (ConfigParser, error) {
+	// make terminal type all lowercase
+	terminalType = strings.ToLower(terminalType)
 	switch terminalType {
 	case "kitty":
 		return NewKittyParser(configPath), nil
 	case "alacritty":
-		return &AlacrittyParser{}, nil
+		return NewAlacrittyParser(configPath), nil
 	default:
 		return nil, fmt.Errorf("unsupported terminal type: %s", terminalType)
 	}
@@ -95,6 +117,16 @@ func GetParser(terminalType string, configPath string) (ConfigParser, error) {
 // a constructer for kittyParser
 func NewKittyParser(configPath string) *KittyParser {
 	return &KittyParser{configPath: configPath}
+}
+
+// constructor for alacrittyParser
+func NewAlacrittyParser(configPath string) *AlacrittyParser {
+	return &AlacrittyParser{
+		configPath: configPath,
+		maxRecursionDepth: 2,
+		recursionDepth: 0,
+		isParsingTheme: false,
+	}
 }
 
 //  Parse the config file
@@ -145,11 +177,6 @@ func (p *KittyParser) Parse(filepath string) (map[string]string, error) {
         return nil, fmt.Errorf("error reading config: %w", err)
     }
 
-	fmt.Println("Parsed configuration:************")
-	for key, value := range config {
-		fmt.Printf("%s %s\n", key, value)
-	}
-
     return config, nil
 }
 
@@ -160,6 +187,7 @@ func (p *KittyParser) ConvertToGhostty(kittyConfig map[string]string) (map[strin
 	for kittyKey, value := range kittyConfig {
 		
         if ghosttyKey, exists := kittyToGhosttyCodex[kittyKey]; exists {
+			
             ghosttyConfig[ghosttyKey] = value
         }else {
 			// handle unmapped keys
@@ -196,6 +224,8 @@ func (p *KittyParser) ConvertToGhostty(kittyConfig map[string]string) (map[strin
 	for _, key := range unmappedKeys {
 		ghosttyConfig["# " + key] = kittyConfig[key]
 	}
+
+	
 
 	return ghosttyConfig, nil
 }
@@ -244,6 +274,7 @@ func (p *KittyParser) parseKittyThemeFile(themeFile string) map[string]string {
 
 
 return ConvertKittyThemeToGhostty(themeConfig)
+
 }
 
 // handle the kitty theme conversion
@@ -283,17 +314,24 @@ func ConvertKittyThemeToGhostty(themeFile map[string]string) map[string]string {
 
 	// alacritty
 	// Implement the Parse method
-func (a *AlacrittyParser) Parse(SurceFilepath string) (map[string]string, error) {
+func (a *AlacrittyParser) Parse(SourceFilepath string) (map[string]string, error) {
+	configDir := filepath.Dir(a.configPath)
+	// handle recursion
+	if a.recursionDepth > a.maxRecursionDepth {
+		return nil, fmt.Errorf("maximum recursion depth reached")
+	}
+	a.recursionDepth++
+	defer func() { a.recursionDepth-- }()
 	
 	// Add your implementation here
-	file, err := os.Open(SurceFilepath)
+	file, err := os.Open(SourceFilepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 	defer file.Close()
 	
-	var themeName string
 	config := make(map[string]string)
+	var fullThemePath string
 	scanner := bufio.NewScanner(file)
 	currentSection := ""
 
@@ -305,14 +343,37 @@ func (a *AlacrittyParser) Parse(SurceFilepath string) (map[string]string, error)
 			continue
 		}
 
-		// check for import and handle theme files
-		if strings.Contains(line, "/theme/") && strings.HasSuffix(line, `.toml",`)  {
-			// get the path to the imported file
-			themePath := strings.Trim(line, `"',`) // remove the quotes
-			themeName = filepath.Base(themePath) // get the theme name
-			fmt.Printf("DEBUG - Theme name: %s\n", themeName)
-			fmt.Printf("DEBUG - Theme path: %s\n", themePath)
+		// handle the theme file
+		if strings.Contains(line, "/theme/") || 
+    	strings.Contains(line, "themes") && 
+    	strings.HasSuffix(line, `.toml",`) {
+    
+			// Clean and normalize path
+			themePath := strings.Trim(line, `"',`)
+			fmt.Printf("DEBUG ---- Theme path: %s\n", themePath)
+			fmt.Printf("DEBUG ---- Config dir: %s\n", configDir)
+			
+			// Get home directory
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Printf(colorWarning("Could not get home directory: %v\n"), err)
+				continue
+			}
+			
+			// Handle ~ expansion and relative paths
+			if strings.HasPrefix(themePath, "~") {
+				themePath = filepath.Join(homeDir, themePath[1:])
+			} else if strings.HasPrefix(themePath, ".") ||
+			strings.HasPrefix(themePath, "/") {
+				themePath = filepath.Join(configDir, themePath)
+			} else if !filepath.IsAbs(themePath) {
+				themePath = filepath.Join(homeDir, themePath)
+			}
+			
+			fullThemePath = filepath.Clean(themePath)
+			continue
 		}
+		
 
 		// because toml, handle section headers
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
@@ -343,11 +404,27 @@ func (a *AlacrittyParser) Parse(SurceFilepath string) (map[string]string, error)
 		}
 	}
 
+	// add the theme file values if there was one
+	if fullThemePath != "" && !a.isParsingTheme {
+		a.isParsingTheme = true
+		// check that the file exists
+		if _, err := os.Stat(fullThemePath); err != nil {
+			fmt.Printf(colorWarning("Theme file not found: %v\n"), err)
+		}
+		themeConfig, err := a.Parse(fullThemePath)
+		if err != nil {
+			fmt.Printf(colorWarning("Failed to parse theme file: %v\n"), err)
+		}else {
+			for key, value := range themeConfig {
+				// only add colors
+				if strings.Contains(key, "colors") {
+					config[key] = value
+				}
 
-		// print the config
-		// for key, value := range config {
-		// 	fmt.Printf("%s %s\n", key, value)
-		// }
+			}
+		}
+		a.isParsingTheme = false
+	}
 
     return config, nil
 }
@@ -480,9 +557,10 @@ func (a *AlacrittyParser) ConvertToGhostty(config map[string]string) (map[string
 	}
 
 	// print the convert congif
-	for key, value := range ghosttyConfig {
-		fmt.Printf("DEBUG GC - %s %s\n", key, value)
-	}
+	// for key, value := range ghosttyConfig {
+	// 	fmt.Printf("DEBUG GC - %s %s\n", key, value)
+	// }
+
 	return ghosttyConfig, nil
 }
 	
