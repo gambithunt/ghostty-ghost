@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -18,7 +19,11 @@ type ConfigParser interface {
 type KittyParser struct {
 	configPath string
 }
-type AlacrittyParser struct {}
+type AlacrittyParser struct {
+	isParsingTheme bool
+	recursionDepth int
+	maxRecursionDepth int
+}
 
 // sort keys alphabetically
 func sortKeysAlphabetically(config map[string]string) []string {
@@ -32,6 +37,12 @@ func sortKeysAlphabetically(config map[string]string) []string {
 
 // kittywriter
 func (p *KittyParser) Write(filepath string, config map[string]string) error {
+	 // Create directory if it doesn't exist
+	 dir := path.Dir(filepath)
+	 if err := os.MkdirAll(dir, 0755); err != nil {
+		 return fmt.Errorf("failed to create directory: %w", err)
+	 }
+
 	// before writing the file backeup the old one if there is one
 	if _, err := os.Stat(filepath); err == nil {
 		backupPath := filepath + ".bak"
@@ -272,14 +283,16 @@ func ConvertKittyThemeToGhostty(themeFile map[string]string) map[string]string {
 
 	// alacritty
 	// Implement the Parse method
-func (a *AlacrittyParser) Parse(filepath string) (map[string]string, error) {
-    // Add your implementation here
-	file, err := os.Open(filepath)
+func (a *AlacrittyParser) Parse(SurceFilepath string) (map[string]string, error) {
+	
+	// Add your implementation here
+	file, err := os.Open(SurceFilepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 	defer file.Close()
-
+	
+	var themeName string
 	config := make(map[string]string)
 	scanner := bufio.NewScanner(file)
 	currentSection := ""
@@ -290,6 +303,15 @@ func (a *AlacrittyParser) Parse(filepath string) (map[string]string, error) {
 		// skip empty lines and comments
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
+		}
+
+		// check for import and handle theme files
+		if strings.Contains(line, "/theme/") && strings.HasSuffix(line, `.toml",`)  {
+			// get the path to the imported file
+			themePath := strings.Trim(line, `"',`) // remove the quotes
+			themeName = filepath.Base(themePath) // get the theme name
+			fmt.Printf("DEBUG - Theme name: %s\n", themeName)
+			fmt.Printf("DEBUG - Theme path: %s\n", themePath)
 		}
 
 		// because toml, handle section headers
@@ -321,10 +343,11 @@ func (a *AlacrittyParser) Parse(filepath string) (map[string]string, error) {
 		}
 	}
 
+
 		// print the config
-		for key, value := range config {
-			fmt.Printf("%s %s\n", key, value)
-		}
+		// for key, value := range config {
+		// 	fmt.Printf("%s %s\n", key, value)
+		// }
 
     return config, nil
 }
@@ -377,8 +400,13 @@ func (a *AlacrittyParser) normaliseAlacrittyValue(value string) string {
 	}
 
 	// neveer to false
-	if strings.ToLower(value) == "never" {
+	if strings.ToLower(value) == "never" || strings.ToLower(value) == "off" {
 		return "false"
+	}
+
+	// OnlyCopy
+	if strings.ToLower(value) == "onlycopy" {
+		return "true"
 	}
 
 	return value
@@ -386,13 +414,76 @@ func (a *AlacrittyParser) normaliseAlacrittyValue(value string) string {
 
 // Implement the Write method
 func (a *AlacrittyParser) Write(filepath string, config map[string]string) error {
-    // Add your implementation here
-    return nil
+	 // Create directory if it doesn't exist
+	 dir := path.Dir(filepath)
+	 if err := os.MkdirAll(dir, 0755); err != nil {
+		 return fmt.Errorf("failed to create directory: %w", err)
+	 }
+
+    //  before writing the file make a backup if ther is already one
+	if _, err := os.Stat(filepath); err == nil {
+		backupPath := filepath + ".bak"
+		// Remove existing backup if it exists
+		if _, err := os.Stat(backupPath); err == nil {
+			if err := os.Remove(backupPath); err != nil {
+				return fmt.Errorf("failed to remove existing backup: %w", err)
+			}
+		}
+
+		// Create new backup
+		if err := os.Rename(filepath, backupPath); err != nil {
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+	}
+
+	// create the file
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// sort the keys alphabetically
+	keys := sortKeysAlphabetically(config)
+
+	// write to the file
+	writer := bufio.NewWriter(file)
+	for _, key := range keys {
+		_, err := writer.WriteString(fmt.Sprintf("%s = %s\n", key, config[key]))
+		if err != nil {
+			return err
+		}
+	}
+
+
+    return writer.Flush()
 }
 
 func (a *AlacrittyParser) ConvertToGhostty(config map[string]string) (map[string]string, error) {
-	// Add your implementation here
-	return make(map[string]string), nil
+	ghosttyConfig := make(map[string]string)
+
+	for alacrittyKey, value := range config {
+		if ghosttyKey, exists := alacrittyToGhostty[alacrittyKey]; exists {
+			ghosttyConfig[ghosttyKey] = value
+		}else {
+			// handle unmapped keys
+			ghosttyConfig["# " + alacrittyKey] = value
+		}
+	}
+
+	// if alacritty has a blur set it to default 10 in ghostty
+	for key, value := range config {
+		// if key window_blur is value true set it to 10
+		if key == "window_blur" && value == "true" {
+			ghosttyConfig["background-blur-radius"] = "10"
+		}
+	}
+
+	// print the convert congif
+	for key, value := range ghosttyConfig {
+		fmt.Printf("DEBUG GC - %s %s\n", key, value)
+	}
+	return ghosttyConfig, nil
 }
 	
 
@@ -479,25 +570,7 @@ var kittyToGhosttyCodex = map[string]string{
 	   "colors_selection_background": "selection-background",
 	   "colors_selection_text": "selection-foreground",
 	   
-	   // Normal colors (0-7)
-	   "colors_normal_black": "palette = 0",
-	   "colors_normal_red": "palette = 1",
-	   "colors_normal_green": "palette = 2",
-	   "colors_normal_yellow": "palette = 3",
-	   "colors_normal_blue": "palette = 4",
-	   "colors_normal_magenta": "palette = 5",
-	   "colors_normal_cyan": "palette = 6",
-	   "colors_normal_white": "palette = 7",
 	   
-	   // Bright colors (8-15)
-	   "colors_bright_black": "palette = 8",
-	   "colors_bright_red": "palette = 9",
-	   "colors_bright_green": "palette = 10",
-	   "colors_bright_yellow": "palette = 11",
-	   "colors_bright_blue": "palette = 12",
-	   "colors_bright_magenta": "palette = 13",
-	   "colors_bright_cyan": "palette = 14",
-		"colors_bright_white": "palette = 15",
   
 	  // Additional mappings from config
 	  "tab_bar_edge": "gtk-tabs-location",
@@ -523,10 +596,10 @@ var alacrittyToGhostty = map[string]string{
 	  "font_bold": "font-family-bold",
 
 	  // Cursor Settings
-	  "cursor": "cursor-style",
+	  "cursor-style": "cursor-style",
+	  "cursor_vi_mode_style_blinking": "cursor-style-blink",
 	  "cursor_text": "cursor-text",
 	  "cursor_color": "cursor-color",
-	  "cursor_opacity": "cursor-opacity",
 	  "cursor_blink": "cursor-style-blink",
 	  "colors_cursor_cursor": "cursor-color",
 	  "cursor_vi_mode_style_shape": "cursor-style",
@@ -534,22 +607,17 @@ var alacrittyToGhostty = map[string]string{
 	  "colors_cursor_text": "cursor-text",
 
 	  // Colors
-	  "background": "background",
-	  "foreground": "foreground",
-	  "selection_foreground": "selection-foreground",
-	  "selection_background": "selection-background",
-	  "selection_invert": "selection-invert-fg-bg",
+	  "colors_primary_background": "background",
+	  "colors_primary_foreground": "foreground",
+	  "colors_selection_foreground": "selection-foreground",
+	  "colors_selection_background": "selection-background",
   
 	  // Window Layout
-	  "window_padding_x": "window-padding-x",
-	  "window_padding_y": "window-padding-y",
-	  "window_padding_balance": "window-padding-balance",
+	  "window_padding": "window-padding-x",
 	  "window_padding_color": "window-padding-color",
-	  "window_vsync": "window-vsync",
-	  "window_decoration": "window-decoration",
-	  "window_theme": "window-theme",
-	  "window_height": "window-height",
-	  "window_width": "window-width",
+	  "window_title": "title",
+	  "window_decorations": "window-decoration",
+	  
   
 	  // Window Behavior
 	  "window_inherit_working_directory": "window-inherit-working-directory",
@@ -557,45 +625,33 @@ var alacrittyToGhostty = map[string]string{
 	  "window_save_state": "window-save-state",
 	  "window_step_resize": "window-step-resize",
 	  "window_new_tab_position": "window-new-tab-position",
+	  "window_opacity": "background-opacity",
   
 	  // Scrollback & Mouse
-	  "scrollback": "scrollback-limit",
-	  "mouse_bindings": "mouse-bindings",
-	  "copy_on_select": "copy-on-select",
-	  "click_repeat_interval": "click-repeat-interval",
-	  "focus_follows_mouse": "focus-follows-mouse",
+	  "scrolling_history": "scrollback-limit",
+	  "keyboard_CopySelection": "copy-on-select",
   
 	  // Clipboard Handling
-	  "clipboard_read": "clipboard-read",
-	  "clipboard_write": "clipboard-write",
-	  "clipboard_trim_trailing_spaces": "clipboard-trim-trailing-spaces",
-	  "clipboard_paste_protection": "clipboard-paste-protection",
-	  "clipboard_paste_bracketed_safe": "clipboard-paste-bracketed-safe",
-  
-	  // System Integration
-	  "shell_integration": "shell-integration",
-	  "shell_integration_features": "shell-integration-features",
-	  "config_file": "config-file",
-	  "config_default_files": "config-default-files",
-  
-	  // macOS Specific
-	  "macos_non_native_fullscreen": "macos-non-native-fullscreen",
-	  "macos_titlebar_style": "macos-titlebar-style",
-	  "macos_titlebar_proxy_icon": "macos-titlebar-proxy-icon",
-	  "macos_option_as_alt": "macos-option-as-alt",
-	  "macos_window_shadow": "macos-window-shadow",
-	  "macos_auto_secure_input": "macos-auto-secure-input",
-	  "macos_secure_input_indication": "macos-secure-input-indication",
-  
-	  // Linux Specific
-	  "linux_cgroup": "linux-cgroup",
-	  "linux_cgroup_memory_limit": "linux-cgroup-memory-limit",
-	  "linux_cgroup_processes_limit": "linux-cgroup-processes-limit",
-	  "linux_cgroup_hard_fail": "linux-cgroup-hard-fail",
-	  "gtk_single_instance": "gtk-single-instance",
-	  "gtk_titlebar": "gtk-titlebar",
-	  "gtk_tabs_location": "gtk-tabs-location",
-	  "gtk_wide_tabs": "gtk-wide-tabs",
-	  "gtk_adwaita": "gtk-adwaita",
+	  "terminal_osc52": "clipboard-read",
+
+	  // Normal colors (0-7)
+	  "colors_normal_black": "palette = 0",
+	  "colors_normal_red": "palette = 1",
+	  "colors_normal_green": "palette = 2",
+	  "colors_normal_yellow": "palette = 3",
+	  "colors_normal_blue": "palette = 4",
+	  "colors_normal_magenta": "palette = 5",
+	  "colors_normal_cyan": "palette = 6",
+	  "colors_normal_white": "palette = 7",
+	  
+	  // Bright colors (8-15)
+	  "colors_bright_black": "palette = 8",
+	  "colors_bright_red": "palette = 9",
+	  "colors_bright_green": "palette = 10",
+	  "colors_bright_yellow": "palette = 11",
+	  "colors_bright_blue": "palette = 12",
+	  "colors_bright_magenta": "palette = 13",
+	  "colors_bright_cyan": "palette = 14",
+	   "colors_bright_white": "palette = 15",
 }
 
