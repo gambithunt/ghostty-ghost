@@ -14,12 +14,7 @@ A command-line tool to convert Kitty and Alacritty terminal configurations to Gh
 
 ## Installation
 
-```sh
-brew tap ghostty/ghostty
-brew install ghostty
-```
-
-Or download the latest release from the [releases page](https://github.com/gambithunt/ghostty-ghost/releases/).
+Download the latest release from the [releases page](https://github.com/gambithunt/ghostty-ghost/releases/).
 
 ## Usage
 
