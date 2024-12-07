@@ -69,7 +69,7 @@ func main() {
     }
 
 	// define the default paths
-	defaultGhosttyPath := filepath.Join(homeDir, ".config", "ghostty","configTest")
+	defaultGhosttyPath := filepath.Join(homeDir, ".config", "ghostty","config")
 	
 	// Parse the flags
 	fromTerminal := flag.String("f", "", "Terminal to convert from (k kitty, a alacritty)")
