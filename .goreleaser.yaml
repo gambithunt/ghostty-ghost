@@ -8,7 +8,7 @@
 version: 2
 
 builds:
-  - id: "other-builds"
+  - id: ghostty-ghost
   - env:
       - CGO_ENABLED=0
     goos:
@@ -43,21 +43,22 @@ archives:
       - goos: windows
         format: zip
 
-# brews:
-#   - name: ghostty-ghost
-#     ids:
-#       - ghostty-ghost-universal
-#       - other-builds
-#     homepage: "https://github.com/gambithunt/ghostty-ghost"
-#     description: "Convert terminal configurations to Ghostty format"
-#     install: |
-#       bin.install "ghostty-ghost"
-#     test: |
-#       system "#{bin}/ghostty-ghost -h"
-#     commit_author:
-#       name: goreleaserbot
-#       email: your@email.com
-#     directory: Formula
+brews:
+  - name: ghostty-ghost
+    ids:
+      - ghostty-ghost-universal
+      - ghostty-ghost
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/gambithunt/ghostty-ghost"
+    description: "Convert terminal configurations to Ghostty format"
+    install: |
+      bin.install "ghostty-ghost"
+    test: |
+      system "#{bin}/ghostty-ghost -h"
+    commit_author:
+      name: goreleaserbot
+      email: rants63ranch@icloud.com
+    directory: Formula
 
 changelog:
   sort: asc
