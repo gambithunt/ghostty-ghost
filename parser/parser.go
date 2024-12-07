@@ -207,7 +207,6 @@ func (p *KittyParser) ConvertToGhostty(kittyConfig map[string]string) (map[strin
 				ghosttyConfig["theme"] = themeName
 			}
 		}else if strings.Contains(value, "current-theme.conf") {
-			fmt.Println("Debug - Theme is a current theme file")
 			// parse the theme file
 			themeConfig := p.parseKittyThemeFile(value)
 			
@@ -235,7 +234,6 @@ func (p *KittyParser) ConvertToGhostty(kittyConfig map[string]string) (map[strin
 func (p *KittyParser) parseKittyThemeFile(themeFile string) map[string]string {
 	configDir := filepath.Dir(p.configPath)
 	fullThemePath := filepath.Join(configDir, themeFile)
-	fmt.Printf("Debug - Full theme path: %s\n", fullThemePath)
 
 	themeConfig := make(map[string]string)
 
@@ -553,11 +551,6 @@ func (a *AlacrittyParser) ConvertToGhostty(config map[string]string) (map[string
 			ghosttyConfig["background-blur-radius"] = "10"
 		}
 	}
-
-	// print the convert congif
-	// for key, value := range ghosttyConfig {
-	// 	fmt.Printf("DEBUG GC - %s %s\n", key, value)
-	// }
 
 	return ghosttyConfig, nil
 }
