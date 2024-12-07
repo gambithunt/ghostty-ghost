@@ -45,7 +45,7 @@ archives:
 
 brews:
   - name: ghostty-ghost
-    url_template: "https://github.com/gambithunt/ghostty-ghost/releases/download/{{ .Tag }}"
+    url_template: "https://github.com/gambithunt/ghostty-ghost/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     ids:
       - ghostty-ghost-universal
       - ghostty-ghost
