@@ -8,6 +8,7 @@
 version: 2
 
 builds:
+  - id: "other-builds"
   - env:
       - CGO_ENABLED=0
     goos:
@@ -44,7 +45,10 @@ archives:
 
 # brews:
 #   - name: ghostty-ghost
-#     homepage: "https://github.com/yourusername/ghostty-ghost"
+#     ids:
+#       - ghostty-ghost-universal
+#       - other-builds
+#     homepage: "https://github.com/gambithunt/ghostty-ghost"
 #     description: "Convert terminal configurations to Ghostty format"
 #     install: |
 #       bin.install "ghostty-ghost"
@@ -53,6 +57,7 @@ archives:
 #     commit_author:
 #       name: goreleaserbot
 #       email: your@email.com
+#     directory: Formula
 
 changelog:
   sort: asc
