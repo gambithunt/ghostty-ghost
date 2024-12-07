@@ -19,7 +19,7 @@ brew tap ghostty/ghostty
 brew install ghostty
 ```
 
-Or download the latest release from the [releases page](#).
+Or download the latest release from the [releases page](https://github.com/gambithunt/ghostty-ghost/releases/).
 
 ## Usage
 
