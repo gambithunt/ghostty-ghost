@@ -1,4 +1,4 @@
-# Ghostty Ghost 🚀
+# Ghostty Ghost 👻
 
 A command-line tool to convert Kitty and Alacritty terminal configurations to Ghostty format.
 
