@@ -9,7 +9,7 @@ version: 2
 
 builds:
   - id: ghostty-ghost
-  - env:
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
