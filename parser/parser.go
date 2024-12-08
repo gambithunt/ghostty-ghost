@@ -85,11 +85,12 @@ func (p *KittyParser) Write(filepath string, config map[string]string) error {
 	for _, key := range keys {
 		// and = is already added to pallete in the func ConvertToGhostty
 		if strings.Contains(key, "palette") {
-			_, err := writer.WriteString(fmt.Sprintf("%s  %s\n", key, config[key]))
+			_, err := writer.WriteString(fmt.Sprintf("%s%s\n", key, config[key]))
 			if err != nil {
 				return err
 			}
 		} else {
+			// if the key  contains palette dont put a space after =
 			_, err := writer.WriteString(fmt.Sprintf("%s = %s\n", key, config[key]))
 			if err != nil {
 				return err
@@ -284,8 +285,7 @@ func ConvertKittyThemeToGhostty(themeFile map[string]string) map[string]string {
 				baseKey := parts[0]
 				modifier := parts[1]
 
-				// combine with the value
-				ghosttyThemeConfig[baseKey+" ="+modifier] = value
+				ghosttyThemeConfig[baseKey+" = "+modifier] = value
 			} else {
 				ghosttyThemeConfig[ghosttyKey] = value
 			}
@@ -592,6 +592,7 @@ var kittyToGhosttyCodex = map[string]string{
 	"window_resize_step_cells": "window-resize-step",
 	"window_decorations":       "window-decoration",
 	"window_opacity":           "background-opacity",
+	"background_opacity":       "background-opacity",
 
 	// scrolling
 	"scrolling_multiplier": "mouse-scroll-multiplier",
@@ -628,7 +629,6 @@ var kittyToGhosttyCodex = map[string]string{
 
 	// Additional mappings from config
 	"tab_bar_edge":           "gtk-tabs-location",
-	"tab_bar_style":          "adw-toolbar-style",
 	"scrollback_lines":       "scrollback-limit",
 	"repaint_delay":          "window-vsync",
 	"input_delay":            "window-vsync",
