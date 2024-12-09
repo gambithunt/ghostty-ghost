@@ -1,69 +1,60 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
-
-# The lines below are called `modelines`. See `:help modeline`
-# Feel free to remove those if you don't want/need to use them.
-# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-# vim: set ts=2 sw=2 tw=0 fo=cnqoj
-version: 2
-
 builds:
-  - id: ghostty-ghost
-    env:
-      - CGO_ENABLED=0
+  - id: linux_amd64
     goos:
       - linux
+    goarch:
+      - amd64
+    name_template: "{{ .ProjectName }}_Linux_x86_64"
+
+  - id: linux_arm64
+    goos:
+      - linux
+    goarch:
+      - arm64
+    name_template: "{{ .ProjectName }}_Linux_arm64"
+
+  - id: windows_amd64
+    goos:
       - windows
+    goarch:
+      - amd64
+    name_template: "{{ .ProjectName }}_Windows_x86_64"
+    archive:
+      format: zip
+
+  - id: windows_arm64
+    goos:
+      - windows
+    goarch:
+      - arm64
+    name_template: "{{ .ProjectName }}_Windows_arm64"
+    archive:
+      format: zip
+
+  - id: macos_amd64
+    goos:
       - darwin
     goarch:
       - amd64
-      - arm64
-    binary: ghostty-ghost
+    name_template: "{{ .ProjectName }}_macOS_x86_64"
 
-universal_binaries:
-  - id: ghostty-ghost-universal
-    replace: true
-    name_template: "ghostty-ghost"
-    ids:
-      - ghostty-ghost
-    mod_timestamp: "{{ .CommitTimestamp }}"
+  - id: macos_arm64
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    name_template: "{{ .ProjectName }}_macOS_arm64"
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
-
-brews:
-  - name: ghostty-ghost
-    url_template: "https://github.com/gambithunt/ghostty-ghost/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    ids:
-      - ghostty-ghost-universal
-      - ghostty-ghost
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    homepage: "https://github.com/gambithunt/ghostty-ghost"
-    description: "Convert terminal configurations to Ghostty format"
-    install: |
-      bin.install "ghostty-ghost"
-    test: |
-      system "#{bin}/ghostty-ghost -h"
-    commit_author:
-      name: goreleaserbot
-      email: rants63ranch@icloud.com
-    directory: Formula
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  - id: default
+    format: tar.gz
+    builds:
+      - linux_amd64
+      - linux_arm64
+      - macos_amd64
+      - macos_arm64
+  - id: windows
+    format: zip
+    builds:
+      - windows_amd64
+      - windows_arm64
