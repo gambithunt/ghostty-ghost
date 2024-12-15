@@ -59,3 +59,18 @@ archives:
     builds:
       - windows_amd64
       - windows_arm64
+
+brews:
+  - repository:
+      owner: gambithunt
+      name: homebrew-tools
+      branch: main
+    homepage: "https://github.com/gambithunt/homebrew-tools"
+    description: "A tool to convert terminal configs to Ghostty"
+    license: "MIT"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    folder: Formula
+    install: |
+      bin.install "{{ .ProjectName }}"

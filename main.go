@@ -10,10 +10,10 @@ import (
 )
 
 const (
-    colorReset  = "\033[0m"
-    colorRed    = "\033[31m"
-    colorYellow = "\033[33m"
-    colorGreen  = "\033[32m"
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorGreen  = "\033[32m"
 )
 
 func colorError(message string) string {
@@ -21,7 +21,7 @@ func colorError(message string) string {
 }
 
 func colorWarning(message string) string {
-    return fmt.Sprintf("%sWARNING: %s%s", colorYellow, message, colorReset)
+	return fmt.Sprintf("%sWARNING: %s%s", colorYellow, message, colorReset)
 }
 
 func colorSuccess(message string) string {
@@ -33,44 +33,44 @@ type TerminalConfig struct {
 	path string
 }
 
-func checkIfPathExists (path string) bool {
+func checkIfPathExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
 
 func createConfigDir(path string) error {
 	return os.Mkdir(filepath.Dir(path), 0755)
-}	
+}
 
 func main() {
 	// get the users home directory
-	homeDir ,err := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", colorError(fmt.Sprintf("Error getting home directory: %v", err)))
-        os.Exit(1)
+		os.Exit(1)
 	}
 
 	// Define custom usage text
-    flag.Usage = func() {
-        fmt.Printf("Usage: %s [options]\n\n", os.Args[0])
-        fmt.Println("Options:")
-        fmt.Println("  -f, --from    Terminal to convert from ((k) kitty, (a) alacritty)")
-        fmt.Println("  -s, --source  Path to source terminal config file")
-        fmt.Println("  -t, --target  Path to target ghostty config file")
-        fmt.Println("\nExample:")
-        fmt.Printf("  %s -f kitty -s ~/.config/kitty/kitty.conf -t ~/.config/ghostty/config\n", os.Args[0])
-        fmt.Println("\nIf no flags are specified, interactive mode will be used.")
-    }
+	flag.Usage = func() {
+		fmt.Printf("Usage: %s [options]\n\n", os.Args[0])
+		fmt.Println("Options:")
+		fmt.Println("  -f, --from    Terminal to convert from ((k) kitty, (a) alacritty)")
+		fmt.Println("  -s, --source  Path to source terminal config file")
+		fmt.Println("  -t, --target  Path to target ghostty config file")
+		fmt.Println("\nExample:")
+		fmt.Printf("  %s -f kitty -s ~/.config/kitty/kitty.conf -t ~/.config/ghostty/config\n", os.Args[0])
+		fmt.Println("\nIf no flags are specified, interactive mode will be used.")
+	}
 
-	 // Define known terminal configs
-	 terminals := []TerminalConfig{
-        {"kitty", filepath.Join(homeDir, ".config", "kitty", "kitty.conf")},
-        {"alacritty", filepath.Join(homeDir, ".config", "alacritty", "alacritty.toml")},
-    }
+	// Define known terminal configs
+	terminals := []TerminalConfig{
+		{"kitty", filepath.Join(homeDir, ".config", "kitty", "kitty.conf")},
+		{"alacritty", filepath.Join(homeDir, ".config", "alacritty", "alacritty.toml")},
+	}
 
 	// define the default paths
-	defaultGhosttyPath := filepath.Join(homeDir, ".config", "ghostty","config")
-	
+	defaultGhosttyPath := filepath.Join(homeDir, ".config", "ghostty", "config")
+
 	// Parse the flags
 	fromTerminal := flag.String("f", "", "Terminal to convert from (k kitty, a alacritty)")
 	sourcePath := flag.String("s", "", "Path to source terminal config")
@@ -93,10 +93,9 @@ func main() {
 		for i, terminal := range availableTerminals {
 			fmt.Printf("%d. %s (%s)\n", i+1, terminal.name, terminal.path)
 		}
-	
 
 		// get input from the user
-		reader := bufio.NewReader(os.Stdin) 
+		reader := bufio.NewReader(os.Stdin)
 		var selection int
 		fmt.Print("Enter selection (1 -", len(availableTerminals), "): ")
 		fmt.Fscanf(reader, "%d", &selection)
@@ -117,22 +116,21 @@ func main() {
 
 		handleParseOfConfig(targetConfig.name, targetConfig.path, *targetPath, defaultGhosttyPath)
 
-		} else { // If flags have been used 
+	} else { // If flags have been used
 
 		handleParseOfConfig(*fromTerminal, *sourcePath, *targetPath, defaultGhosttyPath)
 
+	}
+	// Print the target pathfmt.Printf("Successfully converted configuration to: %s\n", *targetPath)
+	fmt.Printf("\n%s %s\n", "✨", colorSuccess("Configuration converted successfully"))
+	fmt.Printf("%s %s\n", "📝", "Configuration file saved to: "+*targetPath)
+	fmt.Printf("%s %s\n\n", "🚀", "You can now use this configuration with Ghostty terminal")
+	os.Exit(0)
 
-		}
-		// Print the target pathfmt.Printf("Successfully converted configuration to: %s\n", *targetPath)
-		fmt.Printf("\n%s %s\n", "✨", colorSuccess("Configuration converted successfully"))
-		fmt.Printf("%s %s\n", "📝", "Configuration file saved to: " + *targetPath)
-		fmt.Printf("%s %s\n\n", "🚀", "You can now use this configuration with Ghostty terminal")
-		os.Exit(0)	
-	
 }
 
 // handle pasring the config file
-func handleParseOfConfig (fromTerminal, sourcePath, targetPath, defaultGhosttyPath string) {
+func handleParseOfConfig(fromTerminal, sourcePath, targetPath, defaultGhosttyPath string) {
 	// do checks on the source path
 	if sourcePath == "" {
 		fmt.Fprintf(os.Stderr, "%s\n", colorWarning("The default source terminal path does not exist, please use ghostty-ghost -h for help"))
@@ -144,12 +142,12 @@ func handleParseOfConfig (fromTerminal, sourcePath, targetPath, defaultGhosttyPa
 		fmt.Println("Please use ghostty -h for help")
 		os.Exit(1)
 	}
-	
+
 	// if not target path is provided use the default path
 	if targetPath == "" {
 		targetPath = defaultGhosttyPath
 	}
-	
+
 	// parse the config file
 	// Get appropriate parser
 	configParser, err := parser.GetParser(fromTerminal, sourcePath)
@@ -161,7 +159,7 @@ func handleParseOfConfig (fromTerminal, sourcePath, targetPath, defaultGhosttyPa
 	// Parse config
 	config, err := configParser.Parse(sourcePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", colorError(fmt.Sprintf("Error parsing config: %v\n", err)) )
+		fmt.Fprintf(os.Stderr, "%s\n", colorError(fmt.Sprintf("Error parsing config: %v\n", err)))
 		os.Exit(1)
 	}
 

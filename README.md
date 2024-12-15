@@ -41,7 +41,7 @@ ghostty-ghost [options]
 
 #### Options:
 
-- `-f, --from` Terminal to convert from ((k) kitty, (a) alacritty)
+- `-f, --from` Terminal to convert from ( kitty, alacritty)
 - `-s, --source` Path to source terminal config file
 - `-t, --target` Path to target ghostty config file
 
