@@ -75,6 +75,6 @@ brews:
       email: bot@goreleaser.com
     directory: Formula
     install: |
-      bin.install "{{ .ProjectName }}"
+      bin.install Dir["ghostty-ghost_*"].first => "ghostty-ghost"
     test: |
       system "#{bin}/ghostty-ghost --version"
