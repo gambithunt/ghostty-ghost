@@ -66,6 +66,7 @@ brews:
       owner: gambithunt
       name: homebrew-tools
       branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/gambithunt/ghostty-ghost"
     description: "A tool to convert terminal configs to Ghostty"
     license: "MIT"
