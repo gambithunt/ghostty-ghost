@@ -15,7 +15,12 @@ A command-line tool to convert Kitty and Alacritty terminal configurations to Gh
 ## Installation
 
 Download the latest release from the [releases page](https://github.com/gambithunt/ghostty-ghost/releases/).
-MacOS prefered install is using brew:
+
+- Linux
+- MacOS
+- Windows
+
+MacOS prefered install method is using brew:
 
 ```sh
 # Add the tap repository
