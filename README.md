@@ -15,7 +15,21 @@ A command-line tool to convert Kitty and Alacritty terminal configurations to Gh
 ## Installation
 
 Download the latest release from the [releases page](https://github.com/gambithunt/ghostty-ghost/releases/).
-MacOS releases are provided as Universal binaries (labeled as Darwin), compatible with both Apple Silicon and Intel processors.
+MacOS prefered install is using brew:
+
+```sh
+# Add the tap repository
+brew tap gambithunt/tools
+
+# Install the package
+brew install ghostty-ghost
+
+# run ghostty-ghost
+ghostty-ghost --help
+```
+
+MacOS releases are also provided as Universal binaries (labeled as Darwin), compatible with both Apple Silicon and Intel processors.
+[releases page](https://github.com/gambithunt/ghostty-ghost/releases/).
 
 ## Usage
 
